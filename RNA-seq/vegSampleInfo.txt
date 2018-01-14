@@ -1,0 +1,64 @@
+sampleNum	sampleID	rep	tissue	stage
+1	SRR531901	1	seed	4
+2	SRR531902	1	seed	4
+3	SRR531903	1	seed	4
+4	SRR940300	2	seed	18
+5	SRR531910	2	seed	18
+6	SRR531912	2	seed	18
+7	SRR531945	3	seed	24
+8	SRR531944	3	seed	24
+9	SRR531942	3	seed	24
+10	SRR531916	4	embryo	18
+11	SRR531917	4	embryo	18
+12	SRR531919	4	embryo	18
+13	SRR533835	5	embryo	24
+14	SRR533845	5	embryo	24
+15	SRR533829	5	embryo	24
+16	SRR531218	6	leaf	top
+17	SRR531219	6	leaf	top
+18	SRR531220	6	leaf	top
+19	SRR940255	7	leaf	immaure
+20	SRR940256	7	leaf	immaure
+21	SRR940257	7	leaf	immaure
+22	SRR531892	8	silk	NA
+23	SRR531893	8	silk	NA
+24	SRR531894	8	silk	NA
+25	SRR531891	9	cob	pre-pollination
+26	SRR531890	9	cob	pre-pollination
+27	SRR531889	9	cob	pre-pollination
+28	SRR531888	10	cob	immature
+29	SRR531887	10	cob	immature
+30	SRR531886	10	cob	immature
+31	SRR531224	11	shoot	first internode
+32	SRR531225	11	shoot	first internode
+33	SRR531226	11	shoot	first internode
+34	SRR531221	12	shoot	tip
+35	SRR531222	12	shoot	tip
+36	SRR531223	12	shoot	tip
+37	SRR822389	13	root	NA
+38	SRR640264	13	root	14D seedling
+39	SRR536839	14	leaf	1DAP
+40	SRR536838	14	leaf	1DAP
+41	SRR962472	15	leaf	2 weeks
+42	SRR962474	15	leaf	2 weeks
+43	SRR1231519	16	shoot	NA
+44	SRR1231518	16	shoot	NA
+45	SRR1231517	16	shoot	NA
+46	SRR1282044	17	shoot	seedling
+47	SRR1282040	17	shoot	seedling
+48	SRR1282048	17	shoot	seedling
+49	SRR1282043	18	root	seedling
+50	SRR1282047	18	root	seedling
+51	SRR1282039	18	root	seedling
+52	SRR533829	19	endosperm	24DAP
+53	SRR533828	19	endosperm	24DAP
+54	SRR531946	19	endosperm	24DAP
+55	SRR531913	20	endosperm	18DAP
+56	SRR531914	20	endosperm	18DAP
+57	SRR531915	20	endosperm	18DAP
+58	SRR940258	21	tassel	meiotic
+59	SRR531883	21	tassel	meiotic
+60	SRR531884	21	tassel	meiotic
+61	SRR531878	22	tassel	immature
+62	SRR531879	22	tassel	immature
+63	SRR531880	22	tassel	immature
