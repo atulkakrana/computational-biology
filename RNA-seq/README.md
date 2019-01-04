@@ -2,8 +2,8 @@
 
 
 ### versions
-v3.0+ uses Tophat2 for mapping and cufflinks tools for assembling gene, transcripts and counts
-v4.0+ uses Hisat2 for mapping and stringtie tools for assembling gene, transcripts and counts
+v3.0+ uses Tophat2 for mapping and cufflinks tools for assembling gene, transcripts and counts    
+v4.0+ uses Hisat2 for mapping and stringtie tools for assembling gene, transcripts and counts    
 
 ### Local mode (default and maintained)
 Filename fetched from sample info.txt. These are used to identify all different filetypes. In case of paired end, suffix is added to file name and used as identifiers
