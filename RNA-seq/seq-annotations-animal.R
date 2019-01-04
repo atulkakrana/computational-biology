@@ -46,9 +46,12 @@ message("Rows with an annotation:");dim(merged.annots.1)
 merged.annots.2 = merged.annots.1[!duplicated(merged.annots.1$ENTREZID),]
 message("collapsed annotated rows dim:");dim(merged.annots.2)
 
-### Merge collapsed annotated genes with 
-### unannotated ones
+### Merge collapsed annotated genes with unannotated ones
+### Genes with different ENTREZID but same ENSEMBL may be
+### present as these belong to haplotypic region
 merged.annots.3 = rbind(merged.annots.2,merged.annots.na)
+message("merged and collapsed annotated rows dim:");dim(merged.annots.3)
 
 ## Write output table
 write.table(merged.annots.3,"anno-table.txt", sep = '\t',row.names=FALSE)
+
