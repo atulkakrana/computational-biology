@@ -7,7 +7,7 @@ def sendmail():
         print('Sending job complete mail')
         to = 'kakrana@gmail.com'
         gmail_user = 'daemon.blake.lab@gmail.com'
-        gmail_pwd = 'WeLComE@MeYersLab!'
+        gmail_pwd = '*********'
         smtpserver = smtplib.SMTP("smtp.gmail.com",587)
         smtpserver.ehlo()
         smtpserver.starttls()
