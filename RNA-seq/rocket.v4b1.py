@@ -7,6 +7,11 @@
 
 ## Run : python3 ScriptName.py
 
+## ENVIRONMENT #################################
+import os
+from os.path import expanduser
+HOME = expanduser("~")
+
 ## IMPORTS #####################################
 import shutil,datetime,operator,subprocess,multiprocessing,matplotlib
 from multiprocessing import Process, Queue, Pool
@@ -14,7 +19,7 @@ import matplotlib.font_manager as font_manager
 import sys,os,re,time,timeit,csv,glob,string
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import mysql.connector as sql
+# import mysql.connector as sql
 import itertools as it
 import numpy as np
 
@@ -55,20 +60,20 @@ userMaxTagLen   = 90                    ## [server] Used if 'hardMinTagLen' is O
 QCheckStep       = 0                    ## Optional -Performs preliminary QC
 
 ## PRE_PROCESSING - REQUIRED STEPS [Value: 0/1] ##############
-trimLibsStep     = 0                    ## Trim fastq files
-preProGraphsStep = 0                    ## Generates before chopping graphs
-chopLibsStep     = 0                    ## Chops adapter trimmed files
-fastQ2CountStep  = 0                    ## Converts chopped to tag count
-mapperStep       = 0                    ## Maps final chopped files and generates graphs
-summaryFileStep  = 0                    ## Generates mapped summary - Never tested in Rocket, actually imported from prepro
-cleanupStep      = 0                    ## Final cleanup
+trimLibsStep     = 1                    ## Trim fastq files
+preProGraphsStep = 1                    ## Generates before chopping graphs
+chopLibsStep     = 1                    ## Chops adapter trimmed files
+fastQ2CountStep  = 1                    ## Converts chopped to tag count
+mapperStep       = 1                    ## Maps final chopped files and generates graphs
+summaryFileStep  = 1                    ## Generates mapped summary - Never tested in Rocket, actually imported from prepro
+cleanupStep      = 1                    ## Final cleanup
 
 ## SEQ-ANALYSIS - REQUIRED STEPS [Value: 0/1] ##############
-indexBuilderStep = 0                    ## Build index for all the mappings
-spliceMapperStep = 0                    ## HiSat2 Mapping
-stringTieStep    = 0                    ## StringTie assemblies for all transcripts
-stringMergeStep  = 0                    ## Merge GTFs to single assembly
-stringCountStep  = 0                    ## StringTie assemblies for quantification
+indexBuilderStep = 1                    ## Build index for all the mappings
+spliceMapperStep = 1                    ## HiSat2 Mapping
+stringTieStep    = 1                    ## StringTie assemblies for all transcripts
+stringMergeStep  = 1                    ## Merge GTFs to single assembly
+stringCountStep  = 1                    ## StringTie assemblies for quantification
 stringQuantStep  = 1                    ## Generate counts table from all libraries
 
 ## ADVANCED SETTINGS #######################
@@ -82,15 +87,19 @@ nthread         = 4                     ## [developer]  Fine grain PP
 maxReadLen      = 1000                  ## [developer]  Max allowed unchopped read length for graph generation
 
 masterDB        = 'master'              ## [server]
-dataServer      = 'raichu.ddpsc.org' ## [server]
+dataServer      = 'raichu.ddpsc.org'    ## [server]
 
 ## TOOL/FILE PATH ###################################
-adapterFileSE   = '/home/kakrana/tools/Trimmomatic-0.32/adapters/TruSeq-SE.fa'  ## [mandatory] Sequence adapter file in FASTA format - Trimmomatic has files for different kits - Copy from there
-adapterFilePE   = '/home/kakrana/tools/Trimmomatic-0.32/adapters/TruSeq-PE.fa'  ## You can try merged file with SE and PE adapter too, it gave best results to Atul, because adapters are sometimes not in pairs
-hisat2          = '/home/kakrana/tools/hisat2-2.1.0/hisat2'                         ## [mandatory]
-samtools        = '/home/kakrana/tools/samtools-1.9/samtools'                       ## [mandatory]
-stringtie       = '/home/kakrana/tools/stringtie-1.3.5.Linux_x86_64/stringtie'      ## [mandatory]
-prepDE          = '/home/kakrana/tools/stringtie-1.3.5.Linux_x86_64/prepDE.py'
+adapterFileSE   = f'{HOME}/tools/Trimmomatic-0.39/adapters/TruSeq-SE.fa'  ## [mandatory] Sequence adapter file in FASTA format - Trimmomatic has files for different kits - Copy from there
+adapterFilePE   = f'{HOME}/tools/Trimmomatic-0.39/adapters/TruSeq-PE.fa'  ## You can try merged file with SE and PE adapter too, it gave best results to Atul, because adapters are sometimes not in pairs
+hisat2          = f'{HOME}/tools/hisat2-2.1.0/hisat2'                     ## [mandatory]
+samtools        = f'{HOME}/tools/samtools-1.11/samtools'                  ## [mandatory]
+stringtie       = f'{HOME}/tools/stringtie-1.3.5.Linux_x86_64/stringtie'  ## [mandatory]
+prepDE          = f'{HOME}/tools/stringtie-1.3.5.Linux_x86_64/prepDE.py'
+fastqc          = f'{HOME}/tools/FastQC/fastqc'
+trimmomatic     = f'{HOME}/tools/Trimmomatic-0.39/trimmomatic-0.39.jar'
+
+
 #################################################
 
 
@@ -198,11 +207,11 @@ def QCheck(aninput):
     print(aninput)
     lib,ext,nthread,infile = aninput
     print('****Checking quality of %s library****' % (lib))    
-    toolPath = "%s/svn/Tools/FastQC/fastqc" % (os.getenv('HOME'))
+    # toolPath = "%s/tools/FastQC/fastqc" % (os.getenv('HOME'))
 
     outDir = "%s" % (os.getcwd())
     print(outDir)
-    x = subprocess.Popen("%s --outdir=%s %s" % (toolPath,outDir,infile),shell=True)
+    x = subprocess.Popen("%s --outdir=%s %s" % (fastqc,outDir,infile),shell=True)
     x.communicate() # now wait
     ## retcode2 = subprocess.call([toolPath,"--outdir"infile])
 
@@ -238,7 +247,7 @@ def trimLibs(aninput):
     lib,ext,nthread,infile,adp_5p,adp_3p,minTagLen = aninput
     # print (aninput)
     print('\n****Trimming %s library with min length %s****' % (lib,minTagLen))
-    toolPath = "%s/svn/Tools/Trimmomatic-0.32/trimmomatic-0.32.jar" % (os.getenv('HOME'))
+    # toolPath = "%s/tools/Trimmomatic-0.32/trimmomatic-0.32.jar" % (os.getenv('HOME'))
     
     #### LOCAL ##########################
     if Local == 1: 
@@ -251,7 +260,7 @@ def trimLibs(aninput):
             trimLog     = '%s.trim.log' % (lib) ## Output
             trimSumm    = '%s.trim.summ.txt' % (lib)
             
-            retcode = subprocess.call(["java", "-jar", toolPath, "SE", "-phred33","-threads", nthread, infile, trimmedFile, "ILLUMINACLIP:%s:2:30:10" % (adapterFile), "LEADING:3", "TRAILING:3", "SLIDINGWINDOW:4:10", "MINLEN:%s" % (minTagLen)])
+            retcode = subprocess.call(["java", "-jar", trimmomatic, "SE", "-phred33","-threads", nthread, infile, trimmedFile, "ILLUMINACLIP:%s:2:30:10" % (adapterFile), "LEADING:3", "TRAILING:3", "SLIDINGWINDOW:4:10", "MINLEN:%s" % (minTagLen)])
             if retcode == 0:## The bowtie mapping exit with status 0, all is well
                     print('\n****Trimming for %s complete****' % (infile) )
             else:
@@ -272,7 +281,7 @@ def trimLibs(aninput):
             trimLog = '%s.trim.log' % (lib) ## Not used because slows down massively
             trimSumm = '%s.trim.summ.txt' % (lib) ## Used
             
-            retcode = subprocess.call(["java", "-jar", toolPath, "PE", "-phred33", "-threads", nthread, infile1, infile2, trimmedFileP1,trimmedFileU1,trimmedFileP2,trimmedFileU2, "ILLUMINACLIP:%s:2:30:10:8:TRUE" % (adapterFile), "LEADING:3", "TRAILING:3", "SLIDINGWINDOW:4:15", "MINLEN:%s" % (minTagLen)])
+            retcode = subprocess.call(["java", "-jar", trimmomatic, "PE", "-phred33", "-threads", nthread, infile1, infile2, trimmedFileP1,trimmedFileU1,trimmedFileP2,trimmedFileU2, "ILLUMINACLIP:%s:2:30:10:8:TRUE" % (adapterFile), "LEADING:3", "TRAILING:3", "SLIDINGWINDOW:4:15", "MINLEN:%s" % (minTagLen)])
             if retcode == 0:## The bowtie mapping exit with status 0, all is well
                     print('\n****Trimming for %s complete****' % (infile) )
             
@@ -1879,11 +1888,16 @@ if __name__ == '__main__':
 ## Splice sites file generated before running script using: hisat2_extract_splice_sites.py genes.gtf > splicesites.txt
 ## added a function to sort bamfile to sam; this can be arallelized by providing list of libnames with bam extentsion
 
-## v4.0b --> v4.0b1
+## v4.0b --> v4.0b1 [01/04/2019]
 ## stringTie function added
 ## added stringMerge, stringCount and stringQuant function
 ## removed cufflinks, cuffmerge, cuffquants and cuffnorm functions
 ## Note use AnnotationDBI package to add annotations: https://bioconductor.org/packages/release/bioc/vignettes/AnnotationDbi/inst/doc/IntroToAnnotationPackages.pdf
+
+
+## v4.0b1 --> v4.0b2 [01/04/2021]
+## Generalized paths for tools, including fastqc and trimmomatic
+## [ADD YAML config]
 
 
 ### Future fixes -----------------------------------------------
