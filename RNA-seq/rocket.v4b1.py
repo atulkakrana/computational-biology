@@ -79,14 +79,14 @@ stringCountStep  = CONFIG['steps']['stringCountStep']                    ## Stri
 stringQuantStep  = CONFIG['steps']['stringQuantStep']                    ## Generate counts table from all libraries
 
 ## ADVANCED SETTINGS #######################
-minLen          = 35                    ## [mandatory] Min length of tag allowed
-maxLen          = 90                    ## [mandatory] Max length of the tag allowed. Based on maxLen mismatches are allowed for mapping
-unpairDel       = 1                     ## [Only for paired end analysis] 0: Retain unpaired read files after trimming 1: Delete these files
-#maxfrags        = 100000000            ##  Maximum fragments allowed in a bundle before skipping [ default: 500000 ]
+minLen          = CONFIG['dev']['minLen']                    ## [mandatory] Min length of tag allowed
+maxLen          = CONFIG['dev']['maxLen']                    ## [mandatory] Max length of the tag allowed. Based on maxLen mismatches are allowed for mapping
+unpairDel       = CONFIG['dev']['unpairDel']                     ## [Only for paired end analysis] 0: Retain unpaired read files after trimming 1: Delete these files
+#maxfrags        = CONFIG['dev']['stringQuantStep']            ##  Maximum fragments allowed in a bundle before skipping [ default: 500000 ]
 
-numProc         = 8                     ## [developer]  Coarse grain PP [0: Maximize parallel processing | [1-64]: Number of Cores]
-nthread         = 4                     ## [developer]  Fine grain PP
-maxReadLen      = 1000                  ## [developer]  Max allowed unchopped read length for graph generation
+numProc         = CONFIG['user']['numProc']                     ## [developer]  Coarse grain PP [0: Maximize parallel processing | [1-64]: Number of Cores]
+nthread         = CONFIG['dev']['nthread']                     ## [developer]  Fine grain PP
+maxReadLen      = CONFIG['dev']['maxReadLen']                  ## [developer]  Max allowed unchopped read length for graph generation
 
 masterDB        = 'master'              ## [server]
 dataServer      = 'raichu.ddpsc.org'    ## [server]
