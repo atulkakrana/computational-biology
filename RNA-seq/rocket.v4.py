@@ -92,19 +92,19 @@ dataServer      = 'raichu.ddpsc.org'    ## [server]
 hardMinTagLen   = CONFIG['dev']['hardMinTagLen']       ## [server] Override Chopping values from server 
 
 ## TOOL/FILE PATH ###################################
-adapterFileSE   = f'{HOME}/tools/Trimmomatic-0.39/adapters/TruSeq-SE.fa'  ## [mandatory] Sequence adapter file in FASTA format - Trimmomatic has files for different kits - Copy from there
-adapterFilePE   = f'{HOME}/tools/Trimmomatic-0.39/adapters/TruSeq-PE.fa'  ## [mandatory] You can try merged file with SE and PE adapter too, it gave best results to Atul, because adapters are sometimes not in pairs
-hisat2          = f'{HOME}/tools/hisat2-2.1.0/hisat2'                     ## [mandatory]
-samtools        = f'{HOME}/tools/samtools-1.11/bin/samtools'              ## [mandatory] Needs compilation
-stringtie       = f'{HOME}/tools/stringtie-1.3.5.Linux_x86_64/stringtie'  ## [mandatory]
-prepDE          = f'{HOME}/tools/stringtie-1.3.5.Linux_x86_64/prepDE.py'
-fastqc          = f'{HOME}/tools/FastQC/fastqc'
-trimmomatic     = f'{HOME}/tools/Trimmomatic-0.39/trimmomatic-0.39.jar'
-tally           = f'{HOME}/tools/tally/tally'
-bowtie          = f'{HOME}/tools/bowtie-1.3.0-linux-x86_64/bowtie'
+tally           = f'{HOME}/tools/tally/tally'                               ## [mandatory]
+fastqc          = f'{HOME}/tools/FastQC/fastqc'                             ## [mandatory]
+hisat2          = f'{HOME}/tools/hisat2-2.1.0/hisat2'                       ## [mandatory]
+samtools        = f'{HOME}/tools/samtools-1.11/bin/samtools'                ## [mandatory] Needs compilation
+bowtie          = f'{HOME}/tools/bowtie-1.3.0-linux-x86_64/bowtie'          ## [mandatory]
+adapterFileSE   = f'{HOME}/tools/Trimmomatic-0.39/adapters/TruSeq-SE.fa'    ## [mandatory] Sequence adapter file in FASTA format - Trimmomatic has files for different kits - Copy from there
+adapterFilePE   = f'{HOME}/tools/Trimmomatic-0.39/adapters/TruSeq-PE.fa'    ## [mandatory] You can try merged file with SE and PE adapter too, it gave best results to Atul, because adapters are sometimes not in pairs
+stringtie       = f'{HOME}/tools/stringtie-1.3.5.Linux_x86_64/stringtie'    ## [mandatory]
+prepDE          = f'{HOME}/tools/stringtie-2.1.4.Linux_x86_64/prepDE.py3'    ## [mandatory]
+trimmomatic     = f'{HOME}/tools/Trimmomatic-0.39/trimmomatic-0.39.jar'     ## [mandatory]
 
 
-## PREPROCESS #######################################
+## PREPROCESS #####################
 def checkHost(allowedHost):
     print ("\n           ---> Checking HostName <----      ")
     f = subprocess.Popen("hostname", stdout=subprocess.PIPE,shell= True)
@@ -310,7 +310,7 @@ def trimLibs(aninput):
             trimmedFile = '%s.trimmed.%s' % (lib,ext) ## Output
             path,splt,filename = infile.rpartition("/")
             trimLog = '%s.trim.log' % (filename) ## Output
-            retcode = subprocess.call(["java", "-jar", toolPath, "SE", "-phred33", "-trimlog",trimLog,"-threads", nthread, infile, trimmedFile, "ILLUMINACLIP:./%s_adapter.fa:2:30:10" % (lib), "LEADING:3", "TRAILING:3", "SLIDINGWINDOW:4:10", "MINLEN:%s" % (minTagLen)])
+            retcode = subprocess.call(["java", "-jar", trimmomatic, "SE", "-phred33", "-trimlog",trimLog,"-threads", nthread, infile, trimmedFile, "ILLUMINACLIP:./%s_adapter.fa:2:30:10" % (lib), "LEADING:3", "TRAILING:3", "SLIDINGWINDOW:4:10", "MINLEN:%s" % (minTagLen)])
             if retcode == 0:## The bowtie mapping exit with status 0, all is well
                     print('\n****Trimming for %s complete****' % (infile) )
             
@@ -332,7 +332,7 @@ def trimLibs(aninput):
 
             trimLog = '%s.trim.log' % (filename) ## Output
             
-            retcode = subprocess.call(["java", "-jar", toolPath, "PE", "-phred33", "-trimlog",trimLog,"-threads", nthread, infile1, infile2, trimmedFileP1,trimmedFileU1,trimmedFileP2,trimmedFileU2, "ILLUMINACLIP:./%s_adapter.fa:2:30:10:8:TRUE" % (lib), "LEADING:3", "TRAILING:3", "SLIDINGWINDOW:4:10", "MINLEN:%s" % (minTagLen)])
+            retcode = subprocess.call(["java", "-jar", trimmomatic, "PE", "-phred33", "-trimlog",trimLog,"-threads", nthread, infile1, infile2, trimmedFileP1,trimmedFileU1,trimmedFileP2,trimmedFileU2, "ILLUMINACLIP:./%s_adapter.fa:2:30:10:8:TRUE" % (lib), "LEADING:3", "TRAILING:3", "SLIDINGWINDOW:4:10", "MINLEN:%s" % (minTagLen)])
             if retcode == 0:## The bowtie mapping exit with status 0, all is well
                     print('\n****Trimming for %s complete****' % (infile) )
             else:
@@ -512,7 +512,8 @@ def lib_counts_writer(lib, mappedList, mappedAbunList, allTagsList, allAbunList,
 
     return None
 
-## ASSEMBLY ########################################
+
+## ASSEMBLY #######################
 def indexBuilder(genoFile):
     print ("\n**Deleting old index 'folder' !!!!!!!!!!!***\n")
     print("If its a mistake cancel now by pressing ctrl+D and continue from index step by turning off earlier steps- You have 30 seconds")
@@ -616,7 +617,6 @@ def splicedMapper(rawInputs,genoIndex, gtfFile):
         ## Convert output to sorted BAM
         bamSort = convertToBAM(samFile,nproc2)
 
-
     return None
 
 def convertToBAM(samFile,nproc):
@@ -654,7 +654,7 @@ def stringTie(aninput):
     generates output for edgeR and ballgown analyses
     '''
 
-    print("#### StringTie Analysis")
+    print("\n#### Fn: StringTie Analysis")
     print('Inputs:',(aninput))
     lib,ext,nthread,amode   = aninput
     nthread2                = str(nthread)
@@ -664,6 +664,7 @@ def stringTie(aninput):
         ## assembly
         inFile  = '%s.%s' % (lib,ext) 
         outFile = ('%s.stringtie.gtf' % (lib))
+        print("\n Generating library-specific assemblies")
         print ('Input:%s | Output:%s' % (inFile,outFile))
         retcode = subprocess.call([stringtie, "-p", nthread2, "-G", gtfFile, "-o", outFile, "-l", lib, inFile])
 
@@ -675,6 +676,7 @@ def stringTie(aninput):
         inFile      = '%s.%s' % (lib,ext) 
         outFile     = '%s.stringtie.quant.gtf' % (lib)
         mergedgtf   = 'stringtie_merged.gtf' 
+        print("\n Generating summaries for the merged assembly (in accordance with `referenceGTF` value)")
         print ('Input:%s | Output:%s' % (inFile,outFile))
         retcode = subprocess.call([stringtie, "-p", nthread2, "-G", mergedgtf, '-e', "-o", outFile, "-l", lib, inFile])
 
@@ -703,19 +705,18 @@ def stringMerge(rawInputs,gtfFile,genoFile):
     '''
     
     ## Make a list of lib-wise assemblies to merge
-    print ("\n#### Generating list of lib-specific assemblies to merge")
+    print ("\n#### Fn: StringMerge")
     assemblyFile    = 'mergelist.txt'
     assemblyOut     = open(assemblyFile,'w')
     for aninput in rawInputs:  
         lib,ext,nthreads    = aninput
         assemblyPath        = './%s.%s\n' % (lib,ext)
-        print("adding lib to list for merging:%s" % (assemblyPath))
+        print("Adding lib to list for merging:%s" % (assemblyPath.strip('\n')))
         assemblyOut.write(assemblyPath)
-    
+
     assemblyOut.close()
     
-
-    #### use mergelist to merge assemblies
+    #### Use mergelist to merge assemblies
     print ("\n#### Merging lib-specific assemblies from StringTie")
     mergedAssembly  = "stringtie_merged.gtf"
     nproc2          = str(nproc)
@@ -739,8 +740,12 @@ def stringMerge(rawInputs,gtfFile,genoFile):
 def stringQuant(rawInputs):
     '''
     Run stringtie with merged assembly and then compute gene/transcript estimates
+    
+    prepDE bundled with StringTie requires python3;
+    download python3 version from here: https://ccb.jhu.edu/software/stringtie/index.shtml?t=manual
+    direct link: https://ccb.jhu.edu/software/stringtie/dl/prepDE.py3
     '''
-    print('\n#### Running stringQuants\n')
+    print('\n#### Fn: StringQuants\n')
 
     #### prepare samplelist
     print ("\n#### Generating list of lib-specific assemblies to generate counts")
@@ -751,22 +756,27 @@ def stringQuant(rawInputs):
         acount          += 1
         lib,ext         = aninput
         assemblyPath    = '%s\t%s.%s' % (lib,lib,ext)
-        print("adding lib to list for merging:%s" % (assemblyPath))
+        print("Adding lib to list for merging:%s" % (assemblyPath))
         fh_out.write("%s\n" % (assemblyPath))
     fh_out.close()
 
-    #### generate gene/transcript counts       
+    #### generate gene/transcript counts
+    print ("\nNOTE:  Use Python3 version of prepDE.py")
+    print ("NOTE: it's bundled with Rocket.v4, also can be downloaded from StringTie webpage")
+    print ("NOTE: see notes for `stringQuant` finction for links")  
     retcode     = subprocess.call(["python",prepDE,"-i", quantsFile])
     if retcode == 0:## The bowtie mapping exit with status 0, all is well
         print('\nCounts file generated from %s libraries' % (acount))
         print("See 'sample_lst.txt' for list of libraries\n")
+        print("Output: 'gene_count' and 'transcript_coun' CSV files\n")
     else:
-        print ("Problem generating counts table - script exiting")
+        print ("Problem generating counts table")
         sys.exit()
         
     return None
 
-## HELPERS ######################################
+
+## HELPERS ########################
 def sampleInfoRead(sampleInfo):
     ''' This module reads a sample info file to make a list of 
     libraries/files, replicates and groups'''
@@ -822,7 +832,7 @@ def PP(module,alist):
 
 def PPBalance(module,alist):
     #print('***********Parallel instance of %s is being executed*********' % (module))
-    start = time.time()
+    start   = time.time()
     ##PP is being used for Bowtie mappings - This will avoid overflooding of processes to server
     nprocPP = int(nproc/int(nthread)) ## 1 added so as to avoid 0 processor being allocated in serial mode
 
@@ -1553,11 +1563,11 @@ def coreReserve(ncores):
     Decides the core pool for machine - written to make PHASIS comaptible with machines that 
     have less than 10 cores - Will be improved in future
     '''
+    print(f"\n#### Fn: coreReserve")
+    totalcores = int(multiprocessing.cpu_count())
 
     if ncores == 0:
-        ## Automatic assignment of cores selected
-        totalcores = int(multiprocessing.cpu_count())
-        
+        ## Automatic assignment of cores selected       
         if totalcores   == 4: ## For quad core system
             ncores = 3
         elif totalcores == 6: ## For hexa core system
@@ -1570,6 +1580,7 @@ def coreReserve(ncores):
         ## Reserve user specifed cores
         ncores = int(ncores)
 
+    print(f"Reserved {ncores}/{totalcores} cores")
     return ncores
 
 def splicesitemap(gtfFile):
@@ -1581,7 +1592,8 @@ def splicesitemap(gtfFile):
     inFile = "xxx"
     return None
 
-############## MAIN ###########################
+
+## MAIN ###########################
 def main(sampleInfo):
     
     start = time.time() 
@@ -1785,7 +1797,7 @@ def main(sampleInfo):
         # con = ConnectToDB(dataServer,0)
         mapper(rawInputs,2)
     else:
-        print("\n**Mapping Step skipped as selected - What are your intentions?\n")
+        print("\n**Quality-Mapping Step skipped as selected - What are your intentions?\n")
         pass
 
 
@@ -1842,7 +1854,7 @@ def main(sampleInfo):
         sys.exit()
        
     if spliceMapperStep == 1:
-        rawInputs = [(i[0],'chopped.trimmed.fastq',i[2]) for i in register] ## lib/filename, ext, nthreads
+        rawInputs = [(i[0],'chopped.trimmed.fastq',i[2]) for i in register]     ## lib/filename, ext, nthreads
         print('Index being used: %s' % (genoIndex))
         splicedMapper(rawInputs,genoIndex,gtfFile)
     
@@ -1851,7 +1863,7 @@ def main(sampleInfo):
         PPBalance(stringTie,rawInputs)
     
     if stringMergeStep == 1:
-        rawInputs       = [(i[0],'stringtie.gtf',i[2]) for i in register] ## 'cufflink.out' is a folder
+        rawInputs       = [(i[0],'stringtie.gtf',i[2]) for i in register]       ## 'cufflink.out' is a folder
         finalAssembly   = stringMerge(rawInputs,gtfFile,genoFile)
 
     if stringCountStep == 1:
@@ -1859,7 +1871,7 @@ def main(sampleInfo):
         PPBalance(stringTie,rawInputs)
 
     if stringQuantStep == 1:
-        rawInputs       = [(i[0],'stringtie.quant.gtf') for i in register] ## 'cufflink.out' is a folder
+        rawInputs       = [(i[0],'stringtie.quant.gtf') for i in register]      ## 'cufflink.out' is a folder
         finalAssembly   = stringQuant(rawInputs)
 
 if __name__ == '__main__':
@@ -1869,8 +1881,6 @@ if __name__ == '__main__':
         nproc = int(coreReserve(ncores))
     else:
         nproc = int(ncores)
-    
-    #### Execute modules
 
     main(sampleInfo)
     print("\nScript finished sucessfully - you owe a beer !_! to Atul\n")
@@ -1984,7 +1994,10 @@ if __name__ == '__main__':
 ## Add splitting of paired end read capability - by adding script given to Ayush
 ## Improve naming - Extension added to end and before fastq after every step. This will improve deletion of specific files
 ## Add functionality of inputting lib names and replicates info from sample information file
-## EC2 for running this scriot: trimmomatic is compute-intensive, bowtie mapping is compute intensive
+## EC2 for running this script: trimmomatic is compute-intensive, 
+#### Bowtie and HiSat2 mapping is compute and memory intensive 
+#### (uses memory for page caching on 240 MB of 30.0 GB was free in test when mapping one paired end library)
+#### StringTie is memory intensive (uses page cache, 9.4/32.0 GB free when running on two paired end libs)
 
 ## Sample info file format [Local]
 # lib_id  filename  rep group tissue  stage
