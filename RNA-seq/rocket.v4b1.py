@@ -8,81 +8,83 @@
 ## Run : python3 ScriptName.py
 
 ## ENVIRONMENT #################################
-import os
+import os, yaml
 from os.path import expanduser
-HOME = expanduser("~")
+HOME    = expanduser("~")
+CONFIG  = yaml.load(open('rocket.yaml', 'r'), Loader=yaml.FullLoader)
 
 ## IMPORTS #####################################
-import shutil,datetime,operator,subprocess,multiprocessing,matplotlib
+import shutil
+import datetime
+import operator
+import subprocess
+import matplotlib
+import numpy as np
+import multiprocessing
+import itertools as it
 from multiprocessing import Process, Queue, Pool
 import matplotlib.font_manager as font_manager
 import sys,os,re,time,timeit,csv,glob,string
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-# import mysql.connector as sql
-import itertools as it
-import numpy as np
 
 ## REQUIRED INFO ##############################
 ## 1. Lib preparation protocol for value to "libType", "seqType", "adapterFileSE" or "adapterFilePE" parameters
 ## 2. splicesites.txt generated using HISAT2 on GTF file (Hisat oes not uses GTF files directly)
 
 ## PRE-PROCESSING SETTINGS ####################
-Local           = 1                     ## 1: Local 0: Remote | NOTE: Local Analysis: Requires - maxLen,minLen,maxReadLen and adpaters.fa and libraries
-                                        ## Requires SampleInfo file with sampleNum, Filename/Lib code, reps, group
-genomeDB        = "None"                ## [Server mode]For Bowtie index path used for mapping for graphs
-referenceGTF    = "T"                   ## [optional] T: True - use reference gtf file for merging assembling and annotation | F: Do not use GTF file and report transcripts based on transcriptome. Process GTF file for hisat: hisat2_extract_splice_sites.py genes.gtf > splicesites.txt
+Local           = CONFIG['dev']['local']        ## 1: Local 0: Remote | NOTE: Local Analysis: Requires - maxLen,minLen,maxReadLen and adpaters.fa and libraries
+                                                ## Requires SampleInfo file with sampleNum, Filename/Lib code, reps, group
+genomeDB        = CONFIG['dev']['genomeDB']     ## [Server mode]For Bowtie index path used for mapping for graphs
+referenceGTF    = CONFIG['dev']['referenceGTF'] ## [optional] T: True - use reference gtf file for merging assembling and annotation | F: Do not use GTF file and report transcripts based on transcriptome. Process GTF file for hisat: hisat2_extract_splice_sites.py genes.gtf > splicesites.txt
+                                                ## http://plants.ensembl.org/info/website/ftp/index.html OR USE gffread my.gff3 -T -o my.gtf (GFFREAD IS PART OF CUFFLINKS/TUXEDO)
 ## ROCKET #####################################
-gtfFile         = "/home/kakrana/8.Collab/4.Kak/99.genome/GenomeM.mod.gtf"            ## GTF file for stringtie
-ssFile          = "/home/kakrana/8.Collab/4.Kak/99.genome/GenomeM.mod.splicesite.txt" ## splice site file for HISAT2 (see referenceGTF setting for info)
-genoFile        = "/home/kakrana/8.Collab/4.Kak/99.genome/GenomeM.dna_sm.toplevel.fa" ## genome file
-genoIndex       = "/home/kakrana/8.Collab/4.Kak/99.genome/GenomeM.toplevel.index.hisat2/GenomeM.toplevel.index"                ## If index is not in $ALLDATA i.e. local analysis, then specify bowtie1 index here for pre-processing. For Seq-analysis a Bowtie2 index  will be made using 'indexBuilderStep'
-sampleInfo      = "sampleInfoPE.txt"    ## [mandatory] Tab delimted file with three mandatory columns - num (sample numbers), id (filename,library id), rep (same number if replicates
-                                        ## And one optional columns group (sample grouped for edgeR analysis). See end of code for format.
+gtfFile         = CONFIG['user']['gtfFile']     ## GTF file for stringtie
+ssFile          = CONFIG['user']['ssFile']      ## Splice site file for HISAT2 (see referenceGTF setting for info)
+genoFile        = CONFIG['user']['genoFile']    ## Reference genome file
+genoIndex       = CONFIG['user']['genoIndex']   ## If index is not in $ALLDATA i.e. local analysis, then specify bowtie1 index here for pre-processing. For Seq-analysis a Bowtie2 index  will be made using 'indexBuilderStep'
+genoIndexPrePro = CONFIG['user']['genoIndexPrePro'] ## Bowtie1 index used for generating mapping charts 
+sampleInfo      = CONFIG['user']['sampleInfo']  ## [mandatory] Tab delimted file with three mandatory columns - num (sample numbers), id (filename,library id), rep (same number if replicates
+                                                ## And one optional columns group (sample grouped for edgeR analysis). See end of code for format.
+libType         = CONFIG['user']['libType']     ## [mandatory] From HISAT2 manual choose mode for strand-specificity (https://www.biostars.org/p/262027/)
+                                                ## 0 = F or reads corresponds to transcript
+                                                ## 1 = R or reads correspond to reverse complemented counterpart of a transcript
+                                                ## 2 = RF or fr-firststrand (dUTP method, NSR, NNSR, Illumina Tru-Seq stranded protocol)
+                                                ## 3 = FR or fr-secondstrand (RNA linkers ligated)
+seqType         = CONFIG['user']['seqType']     ## [mandatory] 0: Single End; 1:Paired end (requires splitted reads - see fastq dump --split-reads for lib/or custom script)
+groupBy         = CONFIG['user']['groupBy']     ## [mandatory]   R: Group Samples by replicates, G: By user specified groups in sampleInfo 'group' column
 
+hardMinTagLen   = CONFIG['user']['hardMinTagLen'] ## [server] Override Chopping values from server 
+userMinTagLen   = CONFIG['user']['userMinTagLen'] ## [server] Used if 'hardMinTagLen' is ON
+userMaxTagLen   = CONFIG['user']['userMaxTagLen']## [server] Used if 'hardMinTagLen' is ON
 
-
-                                        ## http://plants.ensembl.org/info/website/ftp/index.html OR USE gffread my.gff3 -T -o my.gtf (GFFREAD IS PART OF CUFFLINKS/TUXEDO)
-libType         = 2                     ## [mandatory] From HISAT2 manual choose mode for strand-specificity (https://www.biostars.org/p/262027/)
-                                        ## 0 = F or reads corresponds to transcript
-                                        ## 1 = R or reads correspond to reverse complemented counterpart of a transcript
-                                        ## 2 = RF or fr-firststrand (dUTP method, NSR, NNSR, Illumina Tru-Seq stranded protocol)
-                                        ## 3 = FR or fr-secondstrand (RNA linkers ligated)
-seqType         = 1                     ## [mandatory] 0: Single End; 1:Paired end (requires splitted reads - see fastq dump --split-reads for lib/or custom script)
-
-groupBy         = 'R'                   ## [mandatory]   R: Group Samples by replicates, G: By user specified groups in sampleInfo 'group' column
-
-hardMinTagLen   = 'Y'                   ## [server] Override Chopping values from server 
-userMinTagLen   = 35                    ## [server] Used if 'hardMinTagLen' is ON
-userMaxTagLen   = 90                    ## [server] Used if 'hardMinTagLen' is ON
-
-## PRE_PROCESSING - OPTIONAL STEPS [Value: 0/1] ###############
-QCheckStep       = 0                    ## Optional -Performs preliminary QC
+## PRE_PROCESSING - OPTIONAL STEPS ###############
+QCheckStep      = CONFIG['steps']['QCheckStep']  ## Optional -Performs preliminary QC
 
 ## PRE_PROCESSING - REQUIRED STEPS [Value: 0/1] ##############
-trimLibsStep     = 1                    ## Trim fastq files
-preProGraphsStep = 1                    ## Generates before chopping graphs
-chopLibsStep     = 1                    ## Chops adapter trimmed files
-fastQ2CountStep  = 1                    ## Converts chopped to tag count
-mapperStep       = 1                    ## Maps final chopped files and generates graphs
-summaryFileStep  = 1                    ## Generates mapped summary - Never tested in Rocket, actually imported from prepro
-cleanupStep      = 1                    ## Final cleanup
+trimLibsStep     = CONFIG['steps']['trimLibsStep']                    ## Trim fastq files
+preProGraphsStep = CONFIG['steps']['preProGraphsStep']                    ## Generates before chopping graphs
+chopLibsStep     = CONFIG['steps']['chopLibsStep']                    ## Chops adapter trimmed files
+fastQ2CountStep  = CONFIG['steps']['fastQ2CountStep']                    ## Converts chopped to tag count
+mapperStep       = CONFIG['steps']['mapperStep']                    ## Maps final chopped files and generates graphs
+summaryFileStep  = CONFIG['steps']['summaryFileStep']                    ## Generates mapped summary - Never tested in Rocket, actually imported from prepro
+cleanupStep      = CONFIG['steps']['cleanupStep']                    ## Final cleanup
 
 ## SEQ-ANALYSIS - REQUIRED STEPS [Value: 0/1] ##############
-indexBuilderStep = 1                    ## Build index for all the mappings
-spliceMapperStep = 1                    ## HiSat2 Mapping
-stringTieStep    = 1                    ## StringTie assemblies for all transcripts
-stringMergeStep  = 1                    ## Merge GTFs to single assembly
-stringCountStep  = 1                    ## StringTie assemblies for quantification
-stringQuantStep  = 1                    ## Generate counts table from all libraries
+indexBuilderStep = CONFIG['steps']['indexBuilderStep']                    ## Build index for all the mappings
+spliceMapperStep = CONFIG['steps']['spliceMapperStep']                    ## HiSat2 Mapping
+stringTieStep    = CONFIG['steps']['stringTieStep']                    ## StringTie assemblies for all transcripts
+stringMergeStep  = CONFIG['steps']['stringTieStep']                    ## Merge GTFs to single assembly
+stringCountStep  = CONFIG['steps']['stringCountStep']                    ## StringTie assemblies for quantification
+stringQuantStep  = CONFIG['steps']['stringQuantStep']                    ## Generate counts table from all libraries
 
 ## ADVANCED SETTINGS #######################
 minLen          = 35                    ## [mandatory] Min length of tag allowed
 maxLen          = 90                    ## [mandatory] Max length of the tag allowed. Based on maxLen mismatches are allowed for mapping
 unpairDel       = 1                     ## [Only for paired end analysis] 0: Retain unpaired read files after trimming 1: Delete these files
-#maxfrags        = 100000000             ##  Maximum fragments allowed in a bundle before skipping [ default: 500000 ]
+#maxfrags        = 100000000            ##  Maximum fragments allowed in a bundle before skipping [ default: 500000 ]
 
-numProc         = 60                    ## [developer]  Coarse grain PP [0: Maximize parallel processing | [1-64]: Number of Cores]
+numProc         = 8                     ## [developer]  Coarse grain PP [0: Maximize parallel processing | [1-64]: Number of Cores]
 nthread         = 4                     ## [developer]  Fine grain PP
 maxReadLen      = 1000                  ## [developer]  Max allowed unchopped read length for graph generation
 
@@ -98,6 +100,8 @@ stringtie       = f'{HOME}/tools/stringtie-1.3.5.Linux_x86_64/stringtie'  ## [ma
 prepDE          = f'{HOME}/tools/stringtie-1.3.5.Linux_x86_64/prepDE.py'
 fastqc          = f'{HOME}/tools/FastQC/fastqc'
 trimmomatic     = f'{HOME}/tools/Trimmomatic-0.39/trimmomatic-0.39.jar'
+tally           = f'{HOME}/tools/tally/tally'
+bowtie          = f'{HOME}/tools/bowtie-1.3.0-linux-x86_64/bowtie'
 
 
 #################################################
@@ -395,7 +399,7 @@ def fastQ2Count(aninput):
     outfile = '%s.%s.processed.txt' % (lib,ext.replace(".fastq",""))
     print("This is outfile:%s" % (outfile))
     # sys.exit()
-    retcode = subprocess.call(["tally", "-i", infile, "-o", outfile, "--nozip", "-format","%R%t%X%n"])
+    retcode = subprocess.call([tally, "-i", infile, "-o", outfile, "--nozip", "-format","%R%t%X%n"])
     if retcode == 0:## The bowtie mapping exit with status 0, all is well
             print('\n**** Conversion to tag count format for %s complete****' % (infile) )
     else:
@@ -415,12 +419,11 @@ def mapper(rawInputs,mode):
         if Local == 0:
             cur = con.cursor()
             cur.execute("SELECT bowtie_index_path FROM master.genome_db WHERE genome_db like '%s'" % (genomeDB)) ##bowtie_index_path
-            genoIndexPath = cur.fetchall()
-            
+            genoIndexPath   = cur.fetchall()
             genoIndexPrePro = genoIndexPath[0][0].replace('$ALLDATA', '/alldata') ### Index file
 
         else:
-            genoIndexPrePro = genoIndex
+            pass
 
         print ('Genomic index being used for mapping: %s\n'% (genoIndexPrePro))
         #genoIndex = 'ASPARAGUS_UGA1_genome' ## Test
@@ -430,29 +433,30 @@ def mapper(rawInputs,mode):
         print ('Processing %s for mapping to genome' % (inFile))
         fastaFile = tagCount2FASTA(inFile,'N') ## Unique reads to FASTA format 
 
-        mapFile = ('./%s.%s.map' % (lib,ext.rpartition('.')[0]))
+        mapFile   = ('./%s.%s.map' % (lib,ext.rpartition('.')[0]))
         print(genoIndexPrePro,inFile,fastaFile,mapFile)
         
         ## Map to index ##########################################
         print ('Mapping %s processed file to genome' % (lib))
         nproc2 = str(nproc)
 
-        if int(maxTagLen) > 60:
+        if int(maxTagLen)   > 60:
             mismat = str(2)
         elif int(maxTagLen) <= 60 and maxTagLen > 40:
             mismat = str(1)
         elif int(maxTagLen) <= 40:
             mismat = str(0)
         else:
-            pass
+            print(f"Mismatches not assigned for this read length {maxTagLen}")
+            sys.exit()
         
         ## Bowtie2 for future - Needs retest for speed before switching
         #retcode = subprocess.call(["bowtie2", "-a", "--end-to-end", "-D 1", "-R 1", "-N 0", "-L 20", "-i L,0,1","--score-min L,0,0","--norc","--no-head", "--no-unal", "-t","-p",nthread,"-f", genoIndex,fastaFile,"-S",mapFile])
         
         ## Bowtie 1 - So as to be compatible with current indexes
-        retcode = subprocess.call(["bowtie","-f","-n",mismat,"-p", nproc2,"-t" ,genoIndexPrePro, fastaFile, mapFile])
+        retcode = subprocess.call([bowtie, "-f", "-n", mismat, "-p", nproc2, "-t" , genoIndexPrePro, fastaFile, mapFile])
         
-        if retcode == 0:## The bowtie mapping exit with status 0, all is well
+        if retcode == 0:    ## Mapping exited with status 0, all is well
             print('\nBowtie mapping for %s complete' % (inFile) )
         else:
             print ("There is some problem with mapping of '%s' to cDNA/genomic index - Debug for reason" % (inFile))
@@ -466,19 +470,6 @@ def mapper(rawInputs,mode):
         allTagsList,allAbunList = tagCountStats(aninput,mode)
         print('\nAll Reads:',allTagsList)
         print('Abundance of all sizes:',allAbunList)
-        
-        #### Test
-        ###mappedList  =  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 95075, 166790, 278740, 869086, 735439, 1515217, 7389751, 694494, 122211, 60005, 46023, 39329, 33565, 26818, 19973, 15328, 11599, 842, 648, 579, 653, 1280, 1217, 1219, 1277, 955, 856, 749, 1268, 960, 766, 708, 1983, 28293, 0, 0, 0, 0, 0, 0, 0, 0]
-        ###mappedAbunList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 594218, 805020, 1025890, 5581017, 4444132, 4992476, 20590608, 1714861, 805331, 732898, 595526, 476446, 392119, 299055, 216764, 151625, 91236, 1205, 851, 862, 1039, 3765, 3022, 2628, 3144, 1791, 1727, 1300, 2696, 1905, 2014, 1783, 9453, 856855, 0, 0, 0, 0, 0, 0, 0, 0]
-        ###
-        ###allTagsList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 126163, 220695, 370421, 1103866, 954861, 1886032, 9010585, 1012559, 274245, 140174, 105363, 91338, 82506, 83528, 54283, 56415, 56744, 16843, 20320, 25321, 21814, 41079, 29515, 27635, 23628, 26212, 17507, 13588, 18378, 10826, 8296, 10611, 28215, 483608, 0, 0, 0, 0, 0, 0, 0, 0]
-        ###allAbunList =  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 660160, 944285, 1217495, 6338895, 5015388, 5567509, 23419384, 2145615, 1029584, 858822, 709178, 672526, 658077, 416777, 348543, 248074, 173785, 21838, 23572, 28526, 26472, 77881, 53331, 41566, 36627, 33736, 22249, 17419, 24912, 13704, 10567, 14170, 42449, 1689522, 0, 0, 0, 0, 0, 0, 0, 0]
-        ###
-        ###mappedList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 95, 166, 278, 869, 735, 1515, 7389, 694, 122, 600, 460, 39, 33, 26, 86]
-        ###mappedAbunList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 594, 805, 1025, 5581, 4444, 4992, 20590, 1714, 805, 732, 595, 476, 392, 299, 180]
-        ###
-        ###allTagsList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 126, 220, 370, 1103, 954, 1886, 9010, 1012, 274, 140, 105, 913, 825, 835, 644]
-        ###allAbunList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 660, 944, 1217, 6338, 5015, 5567, 23419, 2145, 1029, 858, 709, 672, 658, 416, 294]
 
         ## Plot
         charts(lib,ext,mappedList,mappedAbunList,allTagsList,allAbunList,mode) ## Mode 1 - Preprocess graphs 2: processed files graphs
@@ -502,7 +493,7 @@ def indexBuilder(genoFile):
         # print("Reference index prepared sucessfully")
         pass
     else:
-        print("There is some problem preparing index of reference '%s'" %  (reference))
+        print("There is some problem preparing index of reference '%s'" %  (genoFile))
         print("Is 'Bowtie' installed? And added to environment variable?")
         print("Script will exit now")
         sys.exit()
@@ -1899,6 +1890,10 @@ if __name__ == '__main__':
 ## Generalized paths for tools, including fastqc and trimmomatic
 ## [ADD YAML config]
 
+## v4.0b2 -> v4.0b3
+## [Replace Bowtie1 for quality charts with HiSat2; this will remove requirement of older, redundant indexes]
+#### [See Bowtie1 and Hisat outputs to make sure HiSat is providing required information]
+
 
 ### Future fixes -----------------------------------------------
 ## Which quality scores used for sequencing: phred33 or phred66
@@ -1907,6 +1902,7 @@ if __name__ == '__main__':
 ## Add splitting of paired end read capability - by adding script given to Ayush
 ## Improve naming - Extension added to end and before fastq after every step. This will improve deletion of specific files
 ## Add functionality of inputting lib names and replicates info from sample information file
+## EC2 for running this scriot: trimmomatic is compute-intensive,  
 
 ## Sample info file format [Local]
 # lib_id  filename  rep group tissue  stage
