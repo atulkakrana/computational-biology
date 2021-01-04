@@ -100,7 +100,7 @@ bowtie          = f'{HOME}/tools/bowtie-1.3.0-linux-x86_64/bowtie'          ## [
 adapterFileSE   = f'{HOME}/tools/Trimmomatic-0.39/adapters/TruSeq-SE.fa'    ## [mandatory] Sequence adapter file in FASTA format - Trimmomatic has files for different kits - Copy from there
 adapterFilePE   = f'{HOME}/tools/Trimmomatic-0.39/adapters/TruSeq-PE.fa'    ## [mandatory] You can try merged file with SE and PE adapter too, it gave best results to Atul, because adapters are sometimes not in pairs
 stringtie       = f'{HOME}/tools/stringtie-1.3.5.Linux_x86_64/stringtie'    ## [mandatory]
-prepDE          = f'{HOME}/tools/stringtie-2.1.4.Linux_x86_64/prepDE.py3'    ## [mandatory]
+prepDE          = f'{HOME}/tools/stringtie-2.1.4.Linux_x86_64/prepDE.py3'   ## [mandatory]
 trimmomatic     = f'{HOME}/tools/Trimmomatic-0.39/trimmomatic-0.39.jar'     ## [mandatory]
 
 
@@ -1609,8 +1609,8 @@ def main(sampleInfo):
     if Local == 1: ## Local analysis
             for i,k in zip(libs,rep):
                 ext = 'fastq'
-                minTagLen = None
-                maxTagLen = None
+                minTagLen = userMinTagLen
+                maxTagLen = userMaxTagLen
                 filePath = './%s.%s' % (i.strip(),ext) ## Mayumi add a space before lib_id/lib_code, strip removes empty space 
                 register.append((str(i),ext,str(nthread),str(filePath),adapterFileSE,adapterFilePE,minTagLen,maxTagLen,str(k))) ## File ID, ext, nthread, raw file path,None (added to maintain same structure as remote analysis register),
                                                                                                             ## adapter file, min tag len, max tag len, replicate

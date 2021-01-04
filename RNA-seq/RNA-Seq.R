@@ -1,16 +1,24 @@
-library(edgeR)
+## RNA-Seq Ananlysis
+## Use Rocket.v4 to process
+## RNA-seq data to matrices
+
+## Guide and Workflows
+## https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/limmaWorkflow.html
+
+## Imports
+require(edgeR)
 
 ### DATA ###########################################################
 getwd()
-setwd('/data2/homes/kakrana/3.ProjectR/3.Anther/2.Seq')
+setwd('/home/anand/0.work/0.seq/1.foxe3_rnaseq')
 
-countDF = read.table("genes.count_table",header = T,row.names = 1)
+countDF = read.table("gene_count_matrix.csv",header = T,row.names = 1, sep = ",")
 names(countDF); dim(countDF)
-countDF.sel = countDF
+countDF.sel = countDF[1:5,]
 dim(countDF);dim(countDF.sel)
 
 phenoFile = read.table('AntherWalbotPheno.tsv', sep ='\t', header = T);phenoFile[1:5,]
-colnames(countDF.sel) = phenoFile$Code
+colnames(countDF.sel) = phenoFile$code
 countDF.sel[1:5,];dim(countDF.sel)
 names(phenoFile)
 phenoFile
