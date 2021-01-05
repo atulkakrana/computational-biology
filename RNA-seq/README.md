@@ -1,17 +1,22 @@
 ## Rocket v4b1
+Note: the data files are deleted during the run to save disk space, so, please keep a copy of your FASTQ files elsewhere for longterm storage (on S3 or other device)
+
 
 ### Data Prepration
-**Paired end data**
-* rename the paired (R1 and R2) files to have "_1" and "_2"
-    For Example: paired samples "68A_S7_L001_R1_001.fastq"  and "68A_S7_L001_R2_001.fastq" are renamed to "68A_S7_L001_1.fastq" and "68A_S7_L001_2.fastq"
 
-* in sampleinfo file when providing names, exclude the "_1" and "_2" suffixes
+**Paired End Data**
+* Rename the paired (R1 and R2) FASTQ file by adding suffixes - "_1" and "_2".
+    For Example: Paired-end samples with names "AB_S7_L001_R1_001.fastq" and "AB_S7_L001_R2_001.fastq" can be renamed to "AB_S7_L001_1.fastq" and "AB_S7_L001_2.fastq"
 
-### To Test
-* GTF files, and their processing - the current modified GTFs may not be best options (especially for lncRNAs)
-* Update genome, corresponding indexes to grc39 (for mouse and human)
-* provide average read-length to prepDE (stringQuant function) computed from "statsWriter"
-* Add "--gta" option to HiSat2 as suggested by StringTie Author: https://ccb.jhu.edu/software/stringtie/index.shtml?t=manual
+* When providing names in the `sampleinfo` file, exclude the "_1" and "_2" suffixes.
+    For Example: Paired end samples renamed above - "AB_S7_L001_1.fastq" and "AB_S7_L001_2.fastq" can be added to `sampleInfo` file as "AB_S7_L001" and ""AB_S7_L001"
+
+**Data Preprocessing**
+* NOTE: From v4, to save disk space, we delete input FASTQ files after they are preprocessed. Make sure to store your libraries elsewhere for future use. 
+
+### Future Updates
+* GTF files processing  - the current modified GTFs may not be best options (especially for lncRNAs)
+* Genome assembly GRC39 - Update genome, corresponding indexes to grc39 (for mouse and human)
 
 ### AWS
 m5a.2xlarge for **testing** on 2 paired end libraries

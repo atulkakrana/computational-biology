@@ -78,6 +78,7 @@ stringTieStep    = CONFIG['steps']['stringTieStep']     ## StringTie assemblies 
 stringMergeStep  = CONFIG['steps']['stringTieStep']     ## Merge GTFs to single assembly
 stringCountStep  = CONFIG['steps']['stringCountStep']   ## StringTie assemblies for quantification
 stringQuantStep  = CONFIG['steps']['stringQuantStep']   ## Generate counts table from all libraries
+finalCleanStep   = CONFIG['steps']['stringQuantStep']   ## deletes all big files including chopped, mapped files
 
 ## ADVANCED SETTINGS #######################
 unpairDel       = CONFIG['dev']['unpairDel']            ## [Only for paired end analysis] 0: Retain unpaired read files after trimming 1: Delete these files
@@ -617,6 +618,10 @@ def splicedMapper(rawInputs,genoIndex, gtfFile):
         ## Convert output to sorted BAM
         bamSort = convertToBAM(samFile,nproc2)
 
+        ## Cleanup
+        print("Deleting SAM files to free disk space")
+        if os.path.exists(samFile): os.remove(samFile)
+
     return None
 
 def convertToBAM(samFile,nproc):
@@ -663,10 +668,11 @@ def stringTie(aninput):
         ## used to generate gene/transcript 
         ## assembly
         inFile  = '%s.%s' % (lib,ext) 
-        outFile = ('%s.stringtie.gtf' % (lib))
+        outFile1 = ('%s.stringtie.gtf' % (lib))
+        outFile2 = ('%s.stringtie.abundances.tsv' % (lib))
         print("\n Generating library-specific assemblies")
-        print ('Input:%s | Output:%s' % (inFile,outFile))
-        retcode = subprocess.call([stringtie, "-p", nthread2, "-G", gtfFile, "-o", outFile, "-l", lib, inFile])
+        print ('Input:%s | Outputs:%s, %s' % (inFile, outFile1, outFile2))
+        retcode = subprocess.call([stringtie, "-p", nthread2, "-G", gtfFile, "-o", outFile1, "-A", outFile2, "-l", lib, inFile])
 
     elif amode == 2:
         ## used to map reads from different 
@@ -676,7 +682,7 @@ def stringTie(aninput):
         inFile      = '%s.%s' % (lib,ext) 
         outFile     = '%s.stringtie.quant.gtf' % (lib)
         mergedgtf   = 'stringtie_merged.gtf' 
-        print("\n Generating summaries for the merged assembly (in accordance with `referenceGTF` value)")
+        print("\n Generating summaries for merged assembly (in accordance with `referenceGTF` value)")
         print ('Input:%s | Output:%s' % (inFile,outFile))
         retcode = subprocess.call([stringtie, "-p", nthread2, "-G", mergedgtf, '-e', "-o", outFile, "-l", lib, inFile])
 
@@ -1135,83 +1141,110 @@ def writeStats(aninput):
     lib,minTagLen,maxTagLen = aninput
     print (aninput)
 
+    ## bools
+    abool = False
+    bbool = False
+    cbool = False
+    dbool = False
+
     ### Read the library temp files with counts and abundances before processing
-    print("Reading stats from: %s_allBefore.temp" % lib)
-    fh_before           = open("%s_allBefore.temp" % lib,'r')
-    aread               = fh_before.read().split('\n')
-    allTags,allAbun     = aread
-    allTagsList,allAbunList = list(map(int,allTags.split(','))),list(map(int,allAbun.split(',')))
-    # print("allTagsList:",allTagsList,"\nallAbunList:",allAbunList)
-    fh_before.close()
+    afile = "%s_allBefore.temp" % (lib)
+    if os.path.exists(afile):
+        print(f"Reading stats from:{afile}")
+        fh_before           = open(afile,'r')
+        aread               = fh_before.read().split('\n')
+        allTags,allAbun     = aread
+        allTagsList,allAbunList = list(map(int,allTags.split(','))),list(map(int,allAbun.split(',')))
+        # print("allTagsList:",allTagsList,"\nallAbunList:",allAbunList)
+        fh_before.close()
+        abool = True
 
     ### Read the library temp files with counts and abundances after processing
-    print("Reading stats from: %s_allAfter.temp" % lib)
-    fh_after            = open("%s_allAfter.temp" % (lib),'r')
-    aread2              = fh_after.read().split('\n')
-    allTags2,allAbun2   = aread2
-    allTagsList2,allAbunList2 = list(map(int,allTags2.split(','))),list(map(int,allAbun2.split(',')))
-    fh_after.close()
+    bfile = "%s_allAfter.temp" % (lib)
+    if os.path.exists(bfile):
+        print(f"Reading stats from: {bfile}")
+        fh_after            = open(bfile,'r')
+        aread2              = fh_after.read().split('\n')
+        allTags2,allAbun2   = aread2
+        allTagsList2,allAbunList2 = list(map(int,allTags2.split(','))),list(map(int,allAbun2.split(',')))
+        fh_after.close()
+        bbool = True
 
-    fh_map_before = open("%s_mappedBefore.temp" % (lib), 'r')
-    aread3 = fh_map_before.read().split('\n')
-    mapped,mappedAbun = aread3
-    mappedList,mappedAbunList = list(map(int,mapped.split(','))),list(map(int,mappedAbun.split(',')))
-    fh_map_before.close()
+    ## Read the library temp files with counts and abundances from mapped reads before processing
+    cfile = "%s_mappedBefore.temp" % (lib)
+    if os.path.exists(cfile):
+        print(f"Reading stats from: {cfile}")
+        fh_map_before = open(cfile, 'r')
+        aread3 = fh_map_before.read().split('\n')
+        mapped,mappedAbun = aread3
+        mappedList,mappedAbunList = list(map(int,mapped.split(','))),list(map(int,mappedAbun.split(',')))
+        fh_map_before.close()
+        cbool = True
     
-    fh_map_after = open("%s_mappedAfter.temp" % (lib),'r')
-    aread4 = fh_map_after.read().split('\n')
-    mapped2,mappedAbun2 = aread4
-    mappedList2,mappedAbunList2 = list(map(int,mapped2.split(','))),list(map(int,mappedAbun2.split(',')))
-    fh_map_after.close()
+    ## Read the library temp files with counts and abundances from mapped reads after processing
+    dfile = "%s_mappedAfter.temp" % (lib)
+    if os.path.exists(dfile):
+        print(f"Reading stats from: {dfile}")
+        fh_map_after = open(dfile,'r')
+        aread4 = fh_map_after.read().split('\n')
+        mapped2,mappedAbun2 = aread4
+        mappedList2,mappedAbunList2 = list(map(int,mapped2.split(','))),list(map(int,mappedAbun2.split(',')))
+        fh_map_after.close()
+        dbool = True
 
-    ### Prepare to write
-    summFile = "%s_chopinfo.txt" % lib
-    fh_out = open(summFile,'w')
-    fh_out.write("Date - %s | Genome - %s\n" % (time.strftime("%d/%m/%Y"),genomeDB))
-    fh_out.write("Lib-%s\tBeforeProcessing\tAfterProcessing\tMappedBeforeProcessing\tmappedAfterProcessing\n" % (lib))
+    if sum([abool,bbool,cbool,dbool]) == 4:
+        ### Prepare to write
+        summFile = "%s_chopinfo.txt" % lib
+        fh_out   = open(summFile,'w')
+        fh_out.write("Date - %s | Genome - %s\n" % (time.strftime("%d/%m/%Y"),genomeDB))
+        fh_out.write("Lib-%s\tBeforeProcessing\tAfterProcessing\tMappedBeforeProcessing\tmappedAfterProcessing\n" % (lib))
 
-    # print("allTagsList length:",len(allTagsList),"\nallAbunList length:",len(allAbunList))
-    indexList   = [i for i,x in enumerate(allTagsList) if x != 0]
-    # print ('indexList:',indexList)
-    minLen      = min(indexList)
-    maxLen      = max(indexList)
+        # print("allTagsList length:",len(allTagsList),"\nallAbunList length:",len(allAbunList))
+        indexList   = [i for i,x in enumerate(allTagsList) if x != 0]
+        # print ('indexList:',indexList)
+        minLen      = min(indexList)
+        maxLen      = max(indexList)
 
-    indexList2  = [i for i,x in enumerate(allAbunList) if x != 0]
-    # print ('indexList2:',indexList)
-    minLenAbun  = min(indexList2)
-    maxLenAbun  = max(indexList2)
-    # print("Allowed min len:%s | Allowed max len:%s" % (minTagLen,maxTagLen))
-    # print("allTags min len:%s | allTags max len = %s | allAbun max len:%s | allAbun max len:%s\n" % (minLen,maxLen,minLenAbun,maxLenAbun))
+        indexList2  = [i for i,x in enumerate(allAbunList) if x != 0]
+        # print ('indexList2:',indexList)
+        minLenAbun  = min(indexList2)
+        maxLenAbun  = max(indexList2)
+        # print("Allowed min len:%s | Allowed max len:%s" % (minTagLen,maxTagLen))
+        # print("allTags min len:%s | allTags max len = %s | allAbun max len:%s | allAbun max len:%s\n" % (minLen,maxLen,minLenAbun,maxLenAbun))
 
-    countsAllBefore     = list(allTagsList[minLen:maxLen+1])
-    countsAllAfter      = list(allTagsList2[minLen:maxLen+1])
-    abunAllBefore       = list(allAbunList[minLen:maxLen+1])
-    abunAllAfter        = list(allAbunList2[minLen:maxLen+1])
-    print(countsAllBefore,countsAllAfter,abunAllBefore,abunAllAfter)
+        countsAllBefore     = list(allTagsList[minLen:maxLen+1])
+        countsAllAfter      = list(allTagsList2[minLen:maxLen+1])
+        abunAllBefore       = list(allAbunList[minLen:maxLen+1])
+        abunAllAfter        = list(allAbunList2[minLen:maxLen+1])
+        print(countsAllBefore,countsAllAfter,abunAllBefore,abunAllAfter)
 
-    countsMappedBefore  = list(mappedList[minLen:maxLen+1])
-    countsMappedAfter   = list(mappedList2[minLen:maxLen+1])
-    abunMappedBefore    = list(mappedAbunList[minLen:maxLen+1])
-    abunMappedAfter     = list(mappedAbunList2[minLen:maxLen+1])
+        countsMappedBefore  = list(mappedList[minLen:maxLen+1])
+        countsMappedAfter   = list(mappedList2[minLen:maxLen+1])
+        abunMappedBefore    = list(mappedAbunList[minLen:maxLen+1])
+        abunMappedAfter     = list(mappedAbunList2[minLen:maxLen+1])
 
-    ## Write file for every tag size
-    indBefore = 0 ## Index to keep track of psoition in all tags (before processing list)
-    indAfter = 0 ## Index to keep track of position in processed lists
-    for i in indexList:
-        # print("Size of tag:%s" % (i))
-        ## use size info from wishlist, to nter zero if size has been filtered out in processing
-        if i >= minTagLen and i <= maxTagLen:
-            fh_out.write("%snt-Count\t%s\t%s\t%s\t%s\n" % (i,countsAllBefore[indBefore],countsAllAfter[indAfter],countsMappedBefore[indBefore],countsMappedAfter[indAfter]))
-            fh_out.write("%snt-Abundance\t%s\t%s\t%s\t%s\n" % (i,abunAllBefore[indBefore],abunAllAfter[indAfter],abunMappedBefore[indBefore],abunMappedAfter[indAfter]))
-            indAfter += 1
-            indBefore+=1
+        ## Write file for every tag size
+        indBefore = 0 ## Index to keep track of psoition in all tags (before processing list)
+        indAfter = 0 ## Index to keep track of position in processed lists
+        for i in indexList:
+            # print("Size of tag:%s" % (i))
+            ## use size info from wishlist, to nter zero if size has been filtered out in processing
+            if i >= minTagLen and i <= maxTagLen:
+                fh_out.write("%snt-Count\t%s\t%s\t%s\t%s\n" % (i,countsAllBefore[indBefore],countsAllAfter[indAfter],countsMappedBefore[indBefore],countsMappedAfter[indAfter]))
+                fh_out.write("%snt-Abundance\t%s\t%s\t%s\t%s\n" % (i,abunAllBefore[indBefore],abunAllAfter[indAfter],abunMappedBefore[indBefore],abunMappedAfter[indAfter]))
+                indAfter += 1
+                indBefore+=1
 
-        else:
-            fh_out.write("%snt-Count\t%s\t0\t%s\t0\n" % (i,countsAllBefore[indBefore],countsMappedBefore[indBefore]))
-            fh_out.write("%snt-Abundance\t%s\t0\t%s\t0\n" % (i,abunAllBefore[indBefore],abunMappedBefore[indBefore]))
-            indBefore+=1
+            else:
+                fh_out.write("%snt-Count\t%s\t0\t%s\t0\n" % (i,countsAllBefore[indBefore],countsMappedBefore[indBefore]))
+                fh_out.write("%snt-Abundance\t%s\t0\t%s\t0\n" % (i,abunAllBefore[indBefore],abunMappedBefore[indBefore]))
+                indBefore+=1
 
-    fh_out.close()
+        fh_out.close()
+    else:
+        print(f"Summary Stats file note generated")
+        print(f"Turn ON all optional steps in preprocessing to generate this file")
+        pass
 
     return None
 
@@ -1592,6 +1625,68 @@ def splicesitemap(gtfFile):
     inFile = "xxx"
     return None
 
+def cleanup_specific(seqType, libs, finalclean=False):
+    '''
+    delete files using library names
+    '''
+    print(f"\n#### Fn:Cleanup #############")
+
+    ## list of files to delete
+    del_lst = []
+
+    ## prepare list of file to delete
+    ## delete trimmed files (retaining trim chopped files)
+    for alib in libs:
+
+        ## common files
+        bam_fls     = [f"{alib}.hisat2.sorted.bam",]
+        str_gtf     = [f"{alib}.stringtie.gtf",]
+        quant_gtf   = [f"{alib}.stringtie.quant.gtf",]
+        if finalclean:
+            del_lst.extend(bam_fls)
+            del_lst.extend(str_gtf)
+            del_lst.extend(quant_gtf)
+            print(f"Added for deletion:{bam_fls, str_gtf, quant_gtf}")
+            pass
+
+        ## seq-type specific files
+        if seqType   == 0:
+            data_fls    = [f"{alib}.fastq",]
+            trim_fls    = [f"{alib}.trimmed.fastq",]
+            chop_fls    = [f"{alib}.chopped.trimmed.fastq",]
+            del_lst.extend(trim_fls)
+            print(f"Added for deletion:{trim_fls}")
+            if finalclean:
+                del_lst.extend(chop_fls)
+                del_lst.extend(data_fls)
+                print(f"Added for deletion:{chop_fls}")
+                pass
+        
+        elif seqType == 1:
+            data_fls    = [f"{alib}_1.fastq", f"{alib}_2.fastq"]
+            trim_fls    = [f"{alib}.pair_1.trimmed.fastq", f"{alib}.pair_2.trimmed.fastq"]
+            chop_fls    = [f"{alib}.chopped.pair_1.trimmed.fastq", f"{alib}.chopped.pair_2.trimmed.fastq"]
+            print(f"Added for deletion:{trim_fls}")
+            del_lst.extend(trim_fls)
+            if finalclean:
+                del_lst.extend(chop_fls)
+                del_lst.extend(data_fls)
+                print(f"Added for deletion:{chop_fls}")
+                pass
+
+        else:
+            print(f"SeqType value :{seqType} is not recognized - please check !!")
+            sys.exit(1)
+            pass
+    
+    ## delete files
+    for afile in del_lst:
+        print(f"\nDeleting:{afile}")
+        if os.path.exists(afile): 
+            os.remove(afile)
+            print(f"Found and Deleted:{afile}")
+
+    return None
 
 ## MAIN ###########################
 def main(sampleInfo):
@@ -1814,13 +1909,16 @@ def main(sampleInfo):
     #### 6. Clean up ###################################################################
     if cleanupStep == 1:
         print ("**Cleaning temp files last time**")
-        garbage = [afile for afile in os.listdir('./') if afile.endswith (('trim.log','processed.fa','.zip'))] ## Excluded 'chopped.trimmed.fastq' as used by RNA Runner
+        garbage = [afile for afile in os.listdir('./') if afile.endswith (('trim.log','processed.fa','.zip','.map','trimmed.processed.txt'))] ## Excluded 'chopped.trimmed.fastq' as used by RNA Runner
         for afile in garbage:
             if os.path.isfile(afile): ## Check to see its a file from bowtie and not tophat mapped folder - Untested
                 print("Deleting %s" % (afile))
                 os.remove(afile)
             else:
                 print("Skiiping cleanup, as its a directory %s" % (afile))
+        
+        ## remove specific files
+        cleanup_specific(seqType, libs, finalclean=False)
 
     else:
         pass
@@ -1873,6 +1971,11 @@ def main(sampleInfo):
     if stringQuantStep == 1:
         rawInputs       = [(i[0],'stringtie.quant.gtf') for i in register]      ## 'cufflink.out' is a folder
         finalAssembly   = stringQuant(rawInputs)
+
+    if finalCleanStep == 1:
+        cleanup_specific(seqType, libs, finalclean=True)
+
+    return None
 
 if __name__ == '__main__':
     
@@ -1956,7 +2059,7 @@ if __name__ == '__main__':
 ## Fixed PPBalance bug allocating process that require more then specified cores
 
 ## v3.4 -> v3.5
-## Unkwnon changes while in India
+## Unknown major changes (while in India on vacation)
 ## Update the TOPHAT version
 
 ## v3.5 -> v3.6
@@ -1979,12 +2082,19 @@ if __name__ == '__main__':
 ## removed redundant parameters "minLen" and "maxLen"
 #### these were included as default values if the Meyers DB doesn't have these in lib info
 ## added library-specific reads stats files for 'stats_writer'
+## added "-A" option for StringTie to get library-level gene abundances
+## added deletion of SAM files in 'splicedMapper'; these are stored as smaller BAM files
+## Improved statswriter to chekc for files in case preprographs and mapping is step is turned off
+## added deletion of FASTQ files in the final delete step
+
+
 
 ## v4.0b2 -> v4.0b3 [NEXT RELEASE]
 ## [Replace Bowtie1 for quality charts with HiSat2; this will remove requirement of older, redundant indexes]
 #### [See Bowtie1 and Hisat outputs to make sure HiSat is providing required information]
 ## [Add index integrity checker from PHASIS]
 ## [UPDATE Stringtie and HiSat versions]
+## [Provide average read-length to prepDE (stringQuant function) computed from "statsWriter"]
 
 
 ### Future fixes -----------------------------------------------

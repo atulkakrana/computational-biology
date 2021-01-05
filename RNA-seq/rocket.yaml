@@ -16,20 +16,22 @@ user:
 
 steps:
   QCheckStep:       0   ## [Optional] Performs preliminary QC
-  trimLibsStep:     1   ## [Required] Trim fastq files
+  trimLibsStep:     0   ## [Required] Trim fastq files
   preProGraphsStep: 0   ## [Optional] Generates before chopping graphs
-  chopLibsStep:     1   ## [Required] Chops adapter trimmed files
-  fastQ2CountStep:  1   ## [Optional] Converts chopped to tag count
+  chopLibsStep:     0   ## [Required] Chops adapter trimmed files
+  fastQ2CountStep:  0   ## [Optional] Converts chopped to tag count
   mapperStep:       0   ## [Optional] Maps final chopped files and generates graphs
   summaryFileStep:  0   ## [Optional] Generates mapped summary - Never tested in Rocket, actually imported from prepro
-  cleanupStep:      1   ## [Required] Final cleanup
 
+  cleanupStep:      1   ## [Required] Final cleanup
   indexBuilderStep: 0   ## [Check]    Use existing index or build index once for spliced mapping
   spliceMapperStep: 1   ## [Required] HiSat2 Mapping
   stringTieStep:    1   ## [Required] StringTie assemblies for all libraries
-  stringMergeStep:  1   ## [Required] Merge individual GTFs to a single assembly
-  stringCountStep:  1   ## [Required] StringTie assemblies for quantification
-  stringQuantStep:  1   ## [Required] Generate counts table from all libraries
+  stringMergeStep:  0   ## [Required] Merge individual GTFs to a single assembly
+  stringCountStep:  0   ## [Required] StringTie assemblies for quantification
+  stringQuantStep:  0   ## [Required] Generate counts table from all libraries
+  
+  finalCleanStep:   0   ## [Optional] Deletes all big files from above steps including original data
 
 dev: 
   unpairDel:        1   ## [Only for paired end analysis] 0: Retain unpaired read files after trimming 1: Delete these files
