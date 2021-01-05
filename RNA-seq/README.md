@@ -11,6 +11,7 @@
 * GTF files, and their processing - the current modified GTFs may not be best options (especially for lncRNAs)
 * Update genome, corresponding indexes to grc39 (for mouse and human)
 * provide average read-length to prepDE (stringQuant function) computed from "statsWriter"
+* Add "--gta" option to HiSat2 as suggested by StringTie Author: https://ccb.jhu.edu/software/stringtie/index.shtml?t=manual
 
 ### AWS
 m5a.2xlarge for **testing** on 2 paired end libraries
