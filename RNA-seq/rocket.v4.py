@@ -761,7 +761,7 @@ def stringQuant(rawInputs):
     fh_out.close()
 
     #### generate gene/transcript counts
-    print ("\nNOTE:  Use Python3 version of prepDE.py")
+    print ("\nNOTE: Use Python3 version of prepDE.py")
     print ("NOTE: it's bundled with Rocket.v4, also can be downloaded from StringTie webpage")
     print ("NOTE: see notes for `stringQuant` finction for links")  
     retcode     = subprocess.call(["python",prepDE,"-i", quantsFile])
@@ -1978,7 +1978,7 @@ if __name__ == '__main__':
 ## Generalized paths for tools, including fastqc and trimmomatic
 ## removed redundant parameters "minLen" and "maxLen"
 #### these were included as default values if the Meyers DB doesn't have these in lib info
-## added library-specific reads stats files for 'stats_writer' [untested]
+## added library-specific reads stats files for 'stats_writer'
 
 ## v4.0b2 -> v4.0b3 [NEXT RELEASE]
 ## [Replace Bowtie1 for quality charts with HiSat2; this will remove requirement of older, redundant indexes]
