@@ -75,10 +75,10 @@ cleanupStep      = CONFIG['steps']['cleanupStep']       ## Final cleanup
 indexBuilderStep = CONFIG['steps']['indexBuilderStep']  ## Build index for all the mappings
 spliceMapperStep = CONFIG['steps']['spliceMapperStep']  ## HiSat2 Mapping
 stringTieStep    = CONFIG['steps']['stringTieStep']     ## StringTie assemblies for all transcripts
-stringMergeStep  = CONFIG['steps']['stringTieStep']     ## Merge GTFs to single assembly
+stringMergeStep  = CONFIG['steps']['stringMergeStep']     ## Merge GTFs to single assembly
 stringCountStep  = CONFIG['steps']['stringCountStep']   ## StringTie assemblies for quantification
 stringQuantStep  = CONFIG['steps']['stringQuantStep']   ## Generate counts table from all libraries
-finalCleanStep   = CONFIG['steps']['stringQuantStep']   ## deletes all big files including chopped, mapped files
+finalCleanStep   = CONFIG['steps']['finalCleanStep']   ## deletes all big files including chopped, mapped files
 
 ## ADVANCED SETTINGS #######################
 unpairDel       = CONFIG['dev']['unpairDel']            ## [Only for paired end analysis] 0: Retain unpaired read files after trimming 1: Delete these files
@@ -682,7 +682,7 @@ def stringTie(aninput):
         inFile      = '%s.%s' % (lib,ext) 
         outFile     = '%s.stringtie.quant.gtf' % (lib)
         mergedgtf   = 'stringtie_merged.gtf' 
-        print("\n Generating summaries for merged assembly (in accordance with `referenceGTF` value)")
+        print("\nGenerating summaries for merged assembly (in accordance with `referenceGTF` value)")
         print ('Input:%s | Output:%s' % (inFile,outFile))
         retcode = subprocess.call([stringtie, "-p", nthread2, "-G", mergedgtf, '-e', "-o", outFile, "-l", lib, inFile])
 
