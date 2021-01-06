@@ -1,0 +1,7 @@
+lib_id	code	rep	group 	sequencer_code	sample
+1	X68A_S7_L001	1	1	X68A	foxe3
+3	X68B_S8_L001	1	1	X68B	foxe3
+4	X68C_S9_L001	1	1	X68C	foxe3
+2	WTA_S10_L001	2	2	WTA	wt
+5	WTB_S11_L001	2	2	WTB	wt
+6	WTC_S12_L001	2	2	WTC	wt

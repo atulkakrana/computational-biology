@@ -3,49 +3,86 @@
 ## RNA-seq data to matrices
 
 ## Guide and Workflows
+## https://ccb.jhu.edu/software/stringtie/index.shtml?t=manual [Using StringTie with DESeq2]
 ## https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/limmaWorkflow.html
 
-## Imports
-require(edgeR)
+## NOTE:
+## Irrespective of method to compute counts, these are reffered to as 'cpm' in this script
+## The input file, if generated from Rocket/Stringtie includes TPM counts
+
+## To Do
+## [1] For input file from StringTie assign genes names to stringtie transcript (MSTRG.) using
+###### 'IsoformSwitchAnalyzeR' as suggested: https://ccb.jhu.edu/software/stringtie/index.shtml?t=manual
+## [2] Annotate the Output from StringTie/IsoformSwitchAnalyzeR
+
+## ENVIRONEMENT ###################################################
+HOME = path.expand("~")
+print(HOME)
+
+## IMPORTS #########################################################
+library(limma)
+library(Glimma)
+library(edgeR)
+library(Mus.musculus)
 
 ### DATA ###########################################################
+## set workig directory
 getwd()
-setwd('/home/anand/0.work/0.seq/1.foxe3_rnaseq')
+setwd(paste(HOME,'0.work/1.seq-analysis/1.foxe3_rnaseq', sep="/"))
 
-countDF = read.table("gene_count_matrix.csv",header = T,row.names = 1, sep = ",")
-names(countDF); dim(countDF)
-countDF.sel = countDF[1:5,]
-dim(countDF);dim(countDF.sel)
+## read data and pheno file
+countData   = read.table("gene_count_matrix.csv",header = T,row.names = 1, sep = ",")
+colnames(countData); dim(countData)
+phenoData   = read.table('phenofile.txt', sep ='\t', header = T);phenoData
+colnames(phenoData)
 
-phenoFile = read.table('AntherWalbotPheno.tsv', sep ='\t', header = T);phenoFile[1:5,]
-colnames(countDF.sel) = phenoFile$code
-countDF.sel[1:5,];dim(countDF.sel)
-names(phenoFile)
-phenoFile
-grp = phenoFile$Sample
-myData = DGEList(counts=countDF.sel, group=grp) # Constructs DGEList object
+## sanity check tp see all
+## libs in phenodata are 
+## present in counts data file
+colmatch = all((phenoData$code) %in% colnames(countData))
+ifelse(colmatch == TRUE, "All Good!", "STOP: Check colnames in pheno file and data file!!!")
+
+## extract data for samples
+## provided in the pheonofile
+countData.sel = countData[, phenoData$code]
+colnames(countData.sel)
+dim(countData); dim(countData.sel)
+
+## Prepare expression data
+## object, with groups for 
+## comparisions
+grp   = phenoData$sample
+myData = DGEList(counts=countData.sel, group=grp); myData
 ####################################################################
 
 ### Presence/Absence filter#########################################
+## select genes that are robustly present
+## the cutoff is arbitraly decided or 
+## use the edgeR method below (filterByExpr)
+# presentList     = rowSums(cpm(myData)>2) >= 2
+# present.genes   = myData[presentList,]
+# dim(myData);dim(present.genes)
 
-presentList <- rowSums(cpm(myData)>2) >= 2 ## How much CPM in how many samples
-present.genes <- myData[presentList,]
+presentList     = filterByExpr(myData, group=grp)
+present.genes   = myData[presentList,, keep.lib.sizes=FALSE]
 dim(myData);dim(present.genes)
+present.genes[1:5,]
 
-countDF.cpm = cpm(present.genes$counts)
-write.table(countDF.cpm,'testCountsCPM2.tsv',sep='\t')
-countDF.cpm[1:5,]
-present.07 = countDF.cpm[countDF.cpm[[2]] > 10,];dim(present.07)
-
-### Reset lib Sizes
-present.genes$samples$lib.size <- colSums(present.genes$counts)
-present.genes$samples
-boxplot(log2(getCounts(present.genes)+1),col = 'red')
+## convert to counts per million
+## just for testing
+# countDF.cpm   = cpm(present.genes$counts)
+# write.table(countDF.cpm,'testCountsCPM2.tsv',sep='\t')
+# countDF.cpm[1:5,]
 ####################################################################
 
 
 ### NORMALIZATION ##################################################
-norm.genes <- calcNormFactors(present.genes)
+### Reset lib Sizes, and normalize
+present.genes$samples$lib.size = colSums(present.genes$counts)
+present.genes$samples
+norm.genes = calcNormFactors(present.genes, method = 'TMM')
+norm.genes; norm.genes$samples$norm.factors
+boxplot(log2(getCounts(present.genes)+1),col = 'red')
 
 ##FOr Exact test
 # norm.tags$samples$groups = c(1,1,2,2)## Group can be introduced 
@@ -65,7 +102,7 @@ norm.genes <- calcNormFactors(present.genes)
 
 ### Plots ##########################################################
 # To view the plot immediately
-plotMDS.DGEList(norm.genes , main = "MDS Plot for Count Data",labels = phenoFile$Group2,cex=0.6)
+plotMDS.DGEList(norm.genes , main = "MDS Plot for Count Data", labels = phenoData$sequencer_code, cex=0.6)
 boxplot(log2(getCounts(norm.genes)+1),col = 'green')
 ####################################################################
 
@@ -92,7 +129,7 @@ boxplot(log2(getCounts(norm.genes)+1),col = 'green')
 # pct_threshold <- 0.6
 # pData(exampleSet)
 # batch.factors <- c("stage",)
-# pvcaObj <- pvcaBatchAssess (exampleSet, batch.factors, pct_threshold)
+# pvcaObj <- pvcaBatchAssess(exampleSet, batch.factors, pct_threshold)
 # save.image("PVCA.RData")
 # 
 # bp <- barplot(pvcaObj$dat,  xlab = "Effects", ylab = "Weighted average proportion variance", ylim= c(0,1.1),col = c("blue"),las=2,main="Principle variance estimation bar chart")
@@ -106,18 +143,16 @@ boxplot(log2(getCounts(norm.genes)+1),col = 'green')
 # plotPCA(exprs,groups = phenoFile$stage,addtext = phenoFile$stage,pcs = c(3,1),legend=F)
 # plotPCA(exprs,groups = phenoFile$stage,addtext = phenoFile$stage,pcs = c(2,3),legend=F)
 
-##PCA DATA ####################################################
+## PCA DATA ########################################################
 
 
 ##### Design #######################################################
 # seq.group <-factor(phenoFile$stage)
 # design = model.matrix(~0+seq.group);design
-
-design = model.matrix(~0+group,data=norm.genes$samples);design ## Tested OK
-colnames(design) <- gsub("group", "", colnames(design))
+design = model.matrix(~0+grp);design
+colnames(design) = gsub("grp", "", colnames(design))
 colnames(design)
-contrast.matrix = makeContrasts((mac1_0_4mm+mac1_0_7mm+mac1_1_0mm+mac1_1_5mm+mac1_2_0mm+ms23_0_4mm+ms23_0_7mm+ms23_1_0mm+ms23_1_5mm+ms23_2_0mm+ocl4_0_4mm+ocl4_0_7mm+ocl4_1_5mm+ocl4_1mm+ocl4_2_0mm)/15 
-              - (W23_0_2mm+W23_0_4mm+W23_0_7mm+W23_1_0mm+W23_1_5mm+W23_2_0mm+W23_2_5mm+W23_3mm+W23_4mm+W23_5mm)/10, levels = design)
+contrast.matrix = makeContrasts(foxe3-wt, levels = design)
 design
 
 # colnames(design) <- levels(norm.genes$samples$group)
@@ -133,9 +168,6 @@ design
 norm.genes.glm <- estimateGLMCommonDisp(norm.genes, design, verbose=TRUE) # Estimates common dispersions
 norm.genes.glm <- estimateGLMTrendedDisp(norm.genes.glm, design) # Estimates trended dispersions
 norm.genes.glm <- estimateGLMTagwiseDisp(norm.genes.glm, design) # Estimates tagwise dispersions
-save.image("AntherSeq.RData")
-
-# load("AntherSeq.RData")
 ####################################################################
 
 
@@ -147,38 +179,39 @@ save.image("AntherSeq.RData")
 # all.Res <- topTags(exact.test, n=Inf)
 
 ### GLM approach
-fit = glmFit(norm.genes.glm, design) # Returns an object of class DGEGLM
-
-# contrast.matrix<-makeContrasts(groupmm0.4-groupmm1.5,levels=design)##Old WB and not new
-# contrast.matrix<-makeContrasts(mm0.4-mm0.7,levels=design)##Old WB and not new
-
-logratio.test = glmLRT(fit, contrast = contrast.matrix ) # Takes DGEGLM object and carries out the likelihood ratio test.
+fit             = glmFit(norm.genes.glm, design) # Returns an object of class DGEGLM
+logratio.test   = glmLRT(fit, contrast = contrast.matrix ) # Takes DGEGLM object and carries out the likelihood ratio test.
 topTags(logratio.test,n=20)
-all.Res <- topTags(logratio.test, n=Inf)
-summary(dt <- decideTestsDGE(logratio.test))
+
+all.Res         = topTags(logratio.test, n=Inf)
+summary(decideTestsDGE(logratio.test))
 
 ### Write results
-write.table(all.Res, "ResUnpairedTtest_CPM2.txt", sep = '\t' )
+write.table(all.Res, "edgeR.tsv", sep = '\t' )
+
 ### Get counts
-detags <- rownames(all.Res)
-countFile = cpm(norm.genes)[detags,]
-write.table(countFile,"TagUnpairedTtest.txt", sep= '\t')
+detags      = rownames(all.Res)
+countFile   = cpm(norm.genes)[detags,]
+write.table(countFile,"counts.tsv", sep= '\t')
 ##################################################################
 
 ############ Annotate and Combine ################################
-final.res = read.delim("ResUnpairedTtest_CPM2.txt")
-final.counts =  read.delim("TagUnpairedTtest.txt")
+## DG and Counts
+final.res   = read.delim("edgeR.tsv")
+final.counts= read.delim("counts.tsv")
+anno.result = data.frame(final.res,final.counts)
+write.table(anno.result,"rnaseq_results.tsv",sep='\t')
 
+## Additional annotations
 final.res[1:5,];dim(final.res)
-res.IDs = rownames(final.res)
-
-annoFile = read.delim("genes.attr_table",stringsAsFactors=FALSE) ## Generated by Rocket
-anno = annoFile[,c(1,4,5,6,7)]
-anno.res = anno[with (anno, match(res.IDs, anno$tracking_id)),]
+res.IDs     = rownames(final.res)
+annoFile    = read.delim("genes.attr_table",stringsAsFactors=FALSE) ## Generated by Rocket [not by v4]
+anno        = annoFile[,c(1,4,5,6,7)]
+anno.res    = anno[with (anno, match(res.IDs, anno$tracking_id)),]
 anno.res[1:5,];dim(anno.res);dim(final.res)
 
 anno.result = data.frame(anno.res,final.res,final.counts)
-write.table(anno.result,"ResAnnotatedUnpairedTtest.txt",sep='\t')
+write.table(anno.result,"rnaseq_results.tsv",sep='\t')
 #################################################################
 
 ##################### Plots #####################################
