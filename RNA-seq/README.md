@@ -19,5 +19,5 @@ Note: the data files are deleted during the run to save disk space, so, please k
 * Genome assembly GRC39 - Update genome, corresponding indexes to grc39 (for mouse and human)
 
 ### AWS Instances
-`t2.micro` for basic operations
+`t2.micro` for basic operations      
 `m5a.2xlarge` for **testing** on 6 paired end libraries
