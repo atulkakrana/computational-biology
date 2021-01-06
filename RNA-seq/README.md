@@ -18,5 +18,6 @@ Note: the data files are deleted during the run to save disk space, so, please k
 * GTF files processing  - the current modified GTFs may not be best options (especially for lncRNAs)
 * Genome assembly GRC39 - Update genome, corresponding indexes to grc39 (for mouse and human)
 
-### AWS
-m5a.2xlarge for **testing** on 2 paired end libraries
+### AWS Instances
+`t2.micro` for basic operations      
+`m5a.2xlarge` for **testing** on 6 paired end libraries
