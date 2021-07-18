@@ -7,9 +7,9 @@
     1. change "--id" to any string/text that you want to name folder for output
     2. change "--sample" to exact sample prefix as FASTQ files
 
-3. Use `aggregate.sh` to combine counts from all sample-speciific counts (and a new Loupe file)
+3. Use `aggregate.sh` to combine counts from all sample-speciific counts (and a new cloupe file)
     1. change "--id" to any string/text that you want to name folder for output
-    2. change "--csv" to path for CSV file with sample_id, molecule_h5 file path ,batch , group
+    2. change "--csv" to path for CSV file with sample_id, molecule_h5 file path ,batch, group (see `aggr.csv` as an example)
 
 4. Explore expression and clusters using:
     1. Loupe browser (load `cloupe` file from aggregation step), or
