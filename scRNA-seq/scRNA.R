@@ -1,5 +1,9 @@
-## hands-on based on https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html
-## publication: Comprehensive integration of single cell data (2018)
+## Process and explore
+## single-cell RNA-seq 
+## data; the output from
+## 10x cellranger aggregate
+## function is the input
+## for this code
 
 ## IMPORTS
 library(dplyr)
@@ -170,3 +174,12 @@ ggsave("VlnPlotRawCounts.png" , plot = last_plot(), dpi = 300, bg = "white", wid
 ## Visualizes feature expression on a tSNE or PCA plot
 FeaturePlot(expr, features = c("Mafg", "Hmox1"))
 ggsave("FeatsExpression.png" , plot = last_plot(), dpi = 300, bg = "white", width=12, height=8)
+
+
+
+
+#### NOTES ###
+##############
+## Based on https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html
+## publication: Comprehensive integration of single cell data (2018)
+
