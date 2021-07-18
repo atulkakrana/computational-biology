@@ -1,4 +1,4 @@
-## scRNA-Seq 
+## Single-Cell RNA-Seq 
 
 ### Preprocessing
 1. Download sample speciific FASTQ files to local machine or AWS instances
